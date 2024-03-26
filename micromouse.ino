@@ -204,7 +204,14 @@ void motorPID(int setPoint, float kp, float ki, float kd){
 //==============================================================================================
 // YOUR HOMEWORK ASSIGNMENT: Create a function to convert from encoder ticks to centimeters!
 int tickConvertToCm(int encoderTicks){
-  // Your code here 
+  /*
+  Motor is 20:1 gear ratio
+  Wheels are 32mm diameter
+  Encoder is 6 pole = 3 ticks per rotation
+  */
+  int motorRot = encoderTicks / 3;
+  int wheelRot = motorRot * 20;
+  float cm = (3.14 * 32 * wheelRot) / 10; // Doesn't return
   return 0;
 }
 //==============================================================================================
