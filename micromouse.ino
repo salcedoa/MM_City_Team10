@@ -238,9 +238,29 @@ int tickConvertToCm(int encoderTicks){
   return 0;
 }
 //==============================================================================================
+void adjustSpeedBasedOnWallDistance() {     
+  int middleSensorReading = analogRead(MIDDLE_SENSOR);
+  
+  if (middleSensorReading < 100) {
+    setMotors(1, 0); // Stop motors
+  } else {
+    setMotors(1, 180);
+  }
+}
 
 void loop() {
-  // Run continuous code here
-  digitalWrite(EMITTERS, HIGH);
-  Serial.println(analogRead(RIGHT_SENSOR));
+  // digitalWrite(EMITTERS, HIGH);
+  // Serial.println(analogRead(RIGHT_SENSOR));  // 130 - 100
+  // Serial.println(analogRead(LEFT_SENSOR));     // 130 - 110
+  // Serial.println(analogRead(MIDDLE_SENSOR));     // 130 - 100
+
+  digitalWrite(DIR_MOTOR_L, HIGH);
+  analogWrite(SPEED_MOTOR_L, 180);
+
+  digitalWrite(DIR_MOTOR_R, LOW);
+  analogWrite(SPEED_MOTOR_R, 180);
+  
+  //setMotors(1, 180);
+  //adjustSpeedBasedOnWallDistance(); 
+
 }
