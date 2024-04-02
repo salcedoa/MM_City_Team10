@@ -172,7 +172,12 @@ public:
         return Cell();
     }
 
+    Cell getCurrentCell(int currentX, int currentY) {
+        return maze[currentX][currentY]
+    }
+
     // Print out all values in maze map
+    // North is to the east but coordinates still make sense
     void printMaze() {
         for (int x = 0; x < rows; ++x) {
             Serial.println();
