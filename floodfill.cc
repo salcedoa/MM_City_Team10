@@ -2,7 +2,9 @@
 #include <string>
 #include <queue>
 
-class Cell {
+#include "cell.h"
+
+/* class Cell {
 private:
     bool northWall;
     bool eastWall;
@@ -46,7 +48,7 @@ public:
     void reset() { 
         setValue(-1);
     }
-};
+}; */ 
 
 void floodfill(Cell** maze, Cell& goal, int rows, int cols) {
     // 1. Set all cells except goal to “blank state”
@@ -143,6 +145,9 @@ int main() {
 
     maze[0][1].setEastWall(true);
     maze[1][1].setWestWall(true);
+
+    maze[3][2].setSouthWall(true);
+    maze[2][2].setNorthWall(true);
     
     floodfill(maze, goal, rows, cols);
 
