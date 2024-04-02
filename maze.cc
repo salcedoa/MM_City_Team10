@@ -92,6 +92,86 @@ public:
         }
     }
 
+    // Add a wall to the maze and to the corrresponding adjacent cell
+    void recordWall(int currentX, int currentY, int dir) {
+        // Record north wall
+        if (dir == 1) {
+            maze[currentX][currentY].setNorthWall(true);
+            
+            // Set adajent wall
+            if (currentY + 1 < rows) {
+                maze[currentX][currentY + 1].setSouthWall(true);
+            }
+        }
+
+        // Record east wall
+        if (dir == 2) {
+            maze[currentX][currentY].setEastWall(true);
+            
+            // Set adajent wall
+            if (currentX + 1 < cols) {
+                maze[currentX + 1][currentY].setWestWall(true);
+            }
+        }
+
+        // Record south wall
+        if (dir == 3) {
+            maze[currentX][currentY].setSouthWall(true);
+            
+            // Set adajent wall
+            if (currentY - 1 >= 0) {
+                maze[currentX][currentY - 1].setNorthWall(true);
+            }
+        }
+
+        // Record west wall
+        if (dir == 4) {
+            maze[currentX][currentY].setWestWall(true);
+
+            // Set adajent wall
+            if (currentX - 1 >= 0) {
+                maze[currentX - 1][currentY].setEastWall(true);
+            }
+        }
+
+    }
+
+    Cell getNorthCell(int currentX, int currentY) {
+        if (currentY + 1 < cols) {
+            return maze[currentX][currentY + 1];
+        }
+
+        // Return default cell (value = -1) if out of range
+        return Cell();
+    }
+
+    Cell getEastCell(int currentX, int currentY) {
+        if (currentX + 1 < rows) {
+            return maze[currentX + 1][currentY];    
+        }
+    
+        // Return default cell (value = -1) if out of range
+        return Cell();
+    }
+
+    Cell getSouthCell(int currentX, int currentY) {
+        if (currentY - 1 >= 0) {
+            return maze[currentX][currentY - 1];
+        }
+
+        // Return default cell (value = -1) if out of range
+        return Cell();
+    }
+
+    Cell getWestCell(int currentX, int currentY) {
+        if (currentX - 1 >= 0) {
+            return maze[currentX - 1][currentY];
+        }
+
+        // Return default cell (value = -1) if out of range
+        return Cell();
+    }
+
     // Print out all values in maze map
     void printMaze() {
         for (int x = 0; x < rows; ++x) {
@@ -105,7 +185,37 @@ public:
 };
 
 int main() {
-    Maze maze(8,8, 2,2);
+    Maze maze(5,5, 2,2);
+
+    // Set walls (random)
+    /*
+    maze.recordWall(0,0, 4);
+    maze.recordWall(0,1, 2);
+    maze.recordWall(1,2, 2);
+    maze.recordWall(0,0, 2);
+    maze.recordWall(0,2, 1);
+    maze.recordWall(2,2, 4);
+    maze.recordWall(2,2, 3);
+    */
+
+    // Test x axis
+    /*
+    maze.recordWall(0,0,1);
+    maze.recordWall(1,0,1);
+    maze.recordWall(2,0,1);
+    maze.recordWall(3,0,1);
+    maze.recordWall(4,0,1);
+    */
+
+    // Test y axis
+    /*
+    maze.recordWall(0,0,2);
+    maze.recordWall(0,1,2);
+    maze.recordWall(0,2,2);
+    maze.recordWall(0,3,2);
+    maze.recordWall(0,4,2);
+    */
+
     maze.floodfill();
     maze.printMaze();
     return 0;
