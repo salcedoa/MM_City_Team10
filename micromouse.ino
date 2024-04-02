@@ -28,6 +28,8 @@
 #define fast_read_pin(P) digitalRead(P)
 #endif
 
+#include "maze.h"
+
 /** =============================================================================================================== **/
 
 /** DEFINE OUR PINS AND WHICH COMPONENTS THEY ARE CONNECTED TO **/
@@ -74,6 +76,11 @@ int errorIntegral;
 bool switchOn = false;
 
 #include "maze.h"
+
+Maze maze(8,8, 5,6);
+int posX = 0;
+int posY = 0;
+int direction = 1;
 
 /** INTERRUPT SERVICE ROUTINES FOR HANDLING ENCODER COUNTING USING STATE TABLE METHOD **/
 void readEncoderLeft() {
@@ -312,13 +319,60 @@ void loop() {
   // Serial.println(analogRead(LEFT_SENSOR));     // 130 - 110
   // Serial.println(analogRead(MIDDLE_SENSOR));     // 130 - 100
 
-  digitalWrite(DIR_MOTOR_L, HIGH);
-  analogWrite(SPEED_MOTOR_L, 180);
+  //digitalWrite(DIR_MOTOR_L, HIGH);
+  //analogWrite(SPEED_MOTOR_L, 180);
 
-  digitalWrite(DIR_MOTOR_R, LOW);
-  analogWrite(SPEED_MOTOR_R, 180);
+  //digitalWrite(DIR_MOTOR_R, LOW);
+  //analogWrite(SPEED_MOTOR_R, 180);
   
   //setMotors(1, 180);
   //adjustSpeedBasedOnWallDistance(); 
+
+  if (maze.getNorthCell.getValue() < maze.getCurrentCell(posX, posY)) {
+    goForward();
+    resetCount();
+    
+    // Update position
+    posY += 1;
+
+    delay(200);
+  } else if (maze.getEasthCell.getValue() < maze.getCurrentCell(posX, posY)) {
+    turnRight();
+    delay(200);
+    goForward();
+    
+    // Update position
+    posX += 1;
+    
+    // Update direction
+    dir = 2;
+    resetCount();
+    delay(200);
+  } else if (maze.getSouthhCell.getValue() < maze.getCurrentCell(posX, posY)) {
+    turnAround();
+    // Update direction
+    dir = 3;
+    delay(200);
+    
+    goForward();
+    // Update position
+    posY -= 1;
+    delay(200);
+
+  } else if (maze.getWestCell.getValue() < maze.getCurrentCell(posX, posY)) {
+    turnLeft();
+    // Update direction
+    dir = 4;
+    delay(200);
+    goForward();
+
+    // Update position
+    posX -= 1;
+    delay(200);
+  } else {
+    // Stop
+    setMotor_l(0,0); 
+    setMotor_r(0,0);
+  }
 
 }
