@@ -1,0 +1,2 @@
+temp->getX() - 1 >= 0
+temp->getX() + 1 < rows

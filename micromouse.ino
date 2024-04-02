@@ -73,6 +73,8 @@ int prevError;
 int errorIntegral;
 bool switchOn = false;
 
+#include "floodfill.h"
+
 void setup() {
   Serial.begin(9600);
   
@@ -247,6 +249,14 @@ void adjustSpeedBasedOnWallDistance() {
     setMotors(1, 180);
   }
 }
+
+void moveForward() {}
+
+void turnLeft() {}
+
+void turnRight() {}
+
+void turnAround() {}
 
 void loop() {
   // digitalWrite(EMITTERS, HIGH);
