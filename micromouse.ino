@@ -30,8 +30,9 @@
 
 #include "maze.h"
 
-/** =============================================================================================================== **/
+#include "maze.h"
 
+/** =============================================================================================================== **/
 /** DEFINE OUR PINS AND WHICH COMPONENTS THEY ARE CONNECTED TO **/
 /** _______________________________________________________________________________________________________________ **/
 const int ENCODER_R_A = 3; // ENCODER RIGHT A (ticks first when motor forward)
@@ -71,11 +72,26 @@ volatile int leftEncoderPos = 0; // Counts for left encoder ticks
 
 // Variables to help us with our PID
 int prevTime = 0;
-int prevError;
-int errorIntegral;
+int prevError_l;
+int prevError_r;
+int errorIntegral_l;
+int errorIntegral_r;
+
+// Flag variable to indicate whether the switch is on or off
 bool switchOn = false;
 
-#include "maze.h"
+// Variables to keep track of our sensors
+int sensorThreshold = 22;
+
+// Variables to keep track of where we are in the maze with coordinates
+String prevHeading = "NORTH"; // can be NORTH, EAST, SOUTH, WEST, initialise to NORTH 
+
+// Variables for setting our target moves - this will be tuned to everyone differently 
+int forwardTarget = 99; // Change these to your own values for tuning 
+int rotateTarget = 44; // Change these to your own values for tuning
+int forwardPID[3] = {1, 2, 0}; // kp ki kd for going forwards
+int rotatePID[3] = {3, 2, 2}; // kp ki kd for rotating
+
 
 Maze maze(8,8, 5,6);
 int posX = 0;
