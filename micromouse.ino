@@ -33,7 +33,7 @@
 /** =============================================================================================================== **/
 /** DEFINE OUR PINS AND WHICH COMPONENTS THEY ARE CONNECTED TO **/
 /** _______________________________________________________________________________________________________________ **/
-const int ENCODER_R_A = 3; // ENCODER RIGHT A (ticks first when motor forward)
+const int ENCODER_R_A = 3; // ENCO5DER RIGHT A (ticks first when motor forward)
 const int ENCODER_R_B = 5; // ENCODER RIGHT B (ticks first when motor backward) 
 
 const int ENCODER_L_A = 4; // ENCODER LEFT A (ticks first when motor forward)
@@ -341,6 +341,10 @@ void loop() {
   
   //setMotors(1, 180);
   //adjustSpeedBasedOnWallDistance(); 
+
+  // EXAMPLE OF WALL RECORDING
+  // if mouse is facing north and left sensor detects wall:
+  // maze.recordWall(posX, posY, 4);
 
   if (maze.getNorthCell.getValue() < maze.getCurrentCell(posX, posY)) {
     goForward();
