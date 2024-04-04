@@ -1,7 +1,8 @@
 #ifndef MAZE_H
 #define MAZE_H
 
-#include <queue>
+//#include <queue>
+#include "queue.h"
 #include "cell.h"
 
 class Maze {
@@ -10,6 +11,7 @@ private:
     Cell* goal;
     int rows;
     int cols;
+    queue cellQueue;
 
 public:
     // Constructor
@@ -42,7 +44,7 @@ public:
 
         // 2. Set goal cell(s) value to 0 and add to queue
         goal->setValue(0);
-        std::queue<Cell*> cellQueue;
+        queue cellQueue;
         cellQueue.push(goal);
 
         while (!cellQueue.empty()) {
@@ -173,14 +175,14 @@ public:
     }
 
     Cell getCurrentCell(int currentX, int currentY) {
-        return maze[currentX][currentY]
+        return maze[currentX][currentY];
     }
 
     // Print out all values in maze map
     // North is to the east but coordinates still make sense
     void printMaze() {
         for (int x = 0; x < rows; ++x) {
-            Serial.println();
+            Serial.println("\n");
             for (int y = 0; y < cols; ++y) {
                 Serial.print(maze[x][y].getValue() + " ");
             }

@@ -31,9 +31,17 @@
 #include "maze.h"
 
 /** =============================================================================================================== **/
+
 /** DEFINE OUR PINS AND WHICH COMPONENTS THEY ARE CONNECTED TO **/
 /** _______________________________________________________________________________________________________________ **/
-const int ENCODER_R_A = 3; // ENCO5DER RIGHT A (ticks first when motor forward)
+
+const int EMITTERS = 12; // EMITTERS
+const int RED_LED = 13; // RED LED AT H BRIDGE
+
+const int INDICATOR_LED_R = 6; // INDICATOR LED RIGHT 
+const int INDICATOR_LED_L = 11; // INDICATOR LED LEFT
+
+const int ENCODER_R_A = 3; // ENCODER RIGHT A (ticks first when motor forward)
 const int ENCODER_R_B = 5; // ENCODER RIGHT B (ticks first when motor backward) 
 
 const int ENCODER_L_A = 4; // ENCODER LEFT A (ticks first when motor forward)
@@ -45,26 +53,16 @@ const int SPEED_MOTOR_R = 10; // PWM MOTOR RIGHT
 const int DIR_MOTOR_L = 7; // DIRECTION MOTOR LEFT 
 const int DIR_MOTOR_R = 8; // DIRECTION MOTOR RIGHT 
 
-//____________________________________________________________________________
-const int EMITTERS = 12; // EMITTERS
-const int RED_LED = 13; // RED LED AT H BRIDGE
-
-const int INDICATOR_LED_R = 6; // INDICATOR LED RIGHT 
-const int INDICATOR_LED_L = 11; // INDICATOR LED LEFT
-
 // Phototransistors
 const int RIGHT_SENSOR = A0;
 const int LEFT_SENSOR = A2;
 const int MIDDLE_SENSOR = A1;
-
-//____________________________________________________________________________
 
 // 4 Way switch and push button
 const int DIP_SWITCH = A6; 
 /** _______________________________________________________________________________________________________________ **/
 
 /* GLOBAL VARIABLES */
-
 volatile int rightEncoderPos = 0; // Counts for right encoder ticks
 volatile int leftEncoderPos = 0; // Counts for left encoder ticks
 
@@ -82,7 +80,10 @@ bool switchOn = false;
 int sensorThreshold = 22;
 
 // Variables to keep track of where we are in the maze with coordinates
-String prevHeading = "NORTH"; // can be NORTH, EAST, SOUTH, WEST, initialise to NORTH 
+int posX = 0;
+int posY = 0;
+int dir = 1;
+Maze maze(8,8, 5,6);
 
 // Variables for setting our target moves - this will be tuned to everyone differently 
 int forwardTarget = 99; // Change these to your own values for tuning 
@@ -90,307 +91,445 @@ int rotateTarget = 44; // Change these to your own values for tuning
 int forwardPID[3] = {1, 2, 0}; // kp ki kd for going forwards
 int rotatePID[3] = {3, 2, 2}; // kp ki kd for rotating
 
+int FWD_COUNT = 0;
 
-Maze maze(8,8, 5,6);
-int posX = 0;
-int posY = 0;
-int direction = 1;
-
+/** _______________________________________________________________________________________________________________ **/
 /** INTERRUPT SERVICE ROUTINES FOR HANDLING ENCODER COUNTING USING STATE TABLE METHOD **/
 void readEncoderLeft() {
-  static uint8_t prevState = 0; 
-  static uint8_t currState = 0; 
-  static unsigned long lastTime = 0; 
-  
-  currState = (fast_read_pin(ENCODER_L_B) << 1) | fast_read_pin(ENCODER_L_A);
-  
-  unsigned long currentTime = micros();
-  unsigned long deltaTime = currentTime - lastTime;
-  lastTime = currentTime;
-  
-  // direction based on prev state
-  uint8_t direction = (prevState << 2) | currState;
-  switch(direction) {
-    case 0b0001:
-    case 0b0111:
-    case 0b1110:
-    case 0b1000:
-      leftEncoderPos++;
-      break;
-    case 0b0010:
-    case 0b1100:
-    case 0b0101:
-    case 0b1011:
-      leftEncoderPos--;
-      break;
+ static uint8_t prevState = 0; 
+ static uint8_t currState = 0; 
+ static unsigned long lastTime = 0; 
 
-    default:
-      break;
-  }
+ currState = (fast_read_pin(ENCODER_L_B) << 1) | fast_read_pin(ENCODER_L_A);
+ 
+ unsigned long currentTime = micros();
+ unsigned long deltaTime = currentTime - lastTime;
+ lastTime = currentTime;
+ 
+ // direction based on prev state
+ uint8_t direction = (prevState << 2) | currState;
+ switch(direction) {
+   case 0b0001:
+   case 0b0111:
+   case 0b1110:
+   case 0b1000:
+     leftEncoderPos--;
+     break;
+     case 0b0010:
+   case 0b1100:
+   case 0b0101:
+   case 0b1011:
+     leftEncoderPos++;
+     break;
 
-  prevState = currState;
+   default:
+     break;
+ }
+ prevState = currState;
 }
-void readEncoderRight() {
-  static uint8_t prevState = 0; 
-  static uint8_t currState = 0; 
-  static unsigned long lastTime = 0; 
-  
-  currState = (fast_read_pin(ENCODER_R_B) << 1) | fast_read_pin(ENCODER_R_A);
-  
-  unsigned long currentTime = micros();
-  unsigned long deltaTime = currentTime - lastTime;
-  lastTime = currentTime;
-  
-  uint8_t direction = (prevState << 2) | currState;
-  switch(direction) {
-    case 0b0100:
-    case 0b1010:
-    case 0b0111:
-    case 0b1001:
-      rightEncoderPos++;
-      break;
-    case 0b1000:
-    case 0b0110:
-    case 0b1101:
-    case 0b0011:
-      rightEncoderPos--;
-      break;
 
-    default:
-      break;
-  }
-  
-  prevState = currState;
+void readEncoderRight() {
+ static uint8_t prevState = 0; 
+ static uint8_t currState = 0; 
+ static unsigned long lastTime = 0; 
+ 
+ currState = (fast_read_pin(ENCODER_R_B) << 1) | fast_read_pin(ENCODER_R_A);
+ 
+ unsigned long currentTime = micros();
+ unsigned long deltaTime = currentTime - lastTime;
+ lastTime = currentTime;
+ 
+ uint8_t direction = (prevState << 2) | currState;
+ switch(direction) {
+   case 0b0100:
+   case 0b1010:
+   case 0b0111:
+   case 0b1001:
+     rightEncoderPos++;
+     break;
+   case 0b1000:
+   case 0b0110:
+   case 0b1101:
+   case 0b0011:
+     rightEncoderPos--;
+     break;
+
+   default:
+     break;
+ }
+ prevState = currState;
 }
 
 /** Function to set motor speed and direction for BOTH motors
-    @params dir - can either be HIGH or LOW for clockwise / counter clockwise rotation
-    @params speed - analogWrite() value between 0-255
+   @params dir - can either be HIGH or LOW for clockwise / counter clockwise rotation
+   @params speed - analogWrite() value between 0-255
 **/
 //==============================================================================================
 void setMotor_r(int dir, int speed){
-  analogWrite(SPEED_MOTOR_R, speed);
-  
-  if(dir == 1){
-    fast_write_pin(DIR_MOTOR_R, LOW);
-  } else if (dir == -1){
-    fast_write_pin(DIR_MOTOR_R, HIGH);
-  } else{
-    analogWrite(SPEED_MOTOR_R, 0);
-  }
+ analogWrite(SPEED_MOTOR_R, speed);
+ 
+ if(dir == 1){
+   fast_write_pin(DIR_MOTOR_R, LOW);
+ } else if (dir == -1){
+   fast_write_pin(DIR_MOTOR_R, HIGH);
+ } else{
+   analogWrite(SPEED_MOTOR_R, 0);
+ }
 }
 
 void setMotor_l(int dir, int speed){
-  analogWrite(SPEED_MOTOR_L, speed);
-  
-  if(dir == 1){
-    fast_write_pin(DIR_MOTOR_L, HIGH);
-  } else if (dir == -1){
-    fast_write_pin(DIR_MOTOR_L, LOW);
-  } else{
-    analogWrite(SPEED_MOTOR_L, 0);
-  }
+ analogWrite(SPEED_MOTOR_L, speed);
+ 
+ if(dir == 1){
+   fast_write_pin(DIR_MOTOR_L, HIGH);
+ } else if (dir == -1){
+   fast_write_pin(DIR_MOTOR_L, LOW);
+ } else{
+   analogWrite(SPEED_MOTOR_L, 0);
+ }
 }
+
 //==============================================================================================
 
 /** Function to make the robot travel for a certain amount of encoder ticks, calls upon setMotors at end
-    @params dir - setPoint: The target value for how far we want to go (in encoder ticks)
-    @params speed - analogWrite() value between 0-255
-    @params kp - proportional gain, this is the main one you should be changing
-    @params ki - intergral gain, use this for steady state errors
-    @params kd - derivative gain, use this for overshoot and oscillation handling 
+   @params dir - setPoint: The target value for how far we want to go (in encoder ticks)
+   @params speed - analogWrite() value between 0-255
+   @params kp - proportional gain, this is the main one you should be changing
+   @params ki - intergral gain, use this for steady state errors
+   @params kd - derivative gain, use this for overshoot and oscillation handling 
 **/
 void motorPID_r(int setPoint, float kp, float ki, float kd){
-  int currentTime = micros();
-  int deltaT = ((float)(currentTime - prevTime)) / 1.0e6; // time difference between ticks in seconds
-  prevTime = currentTime; // update prevTime each loop 
-  
-  int error = setPoint - rightEncoderPos;
-  int errorDerivative_r = (error - prevError_r) / deltaT;
-  errorIntegral_r = errorIntegral_r + error*deltaT;
+ int currentTime = micros();
+ int deltaT = ((float)(currentTime - prevTime)) / 1.0e6; // time difference between ticks in seconds
+ prevTime = currentTime; // update prevTime each loop 
+ 
+ int error = setPoint - rightEncoderPos;
+ int errorDerivative_r = (error - prevError_r) / deltaT;
+ errorIntegral_r = errorIntegral_r + error*deltaT;
 
-  float u = kp*error + ki*errorIntegral_r + kd*errorDerivative_r; 
+ float u = kp*error + ki*errorIntegral_r + kd*errorDerivative_r; 
 
-  float speed = fabs(u); // Set a top speed
-  if(speed > 150){
-    speed = 150;
-  }
+ float speed = fabs(u); // Set a top speed
+ if(speed > 150){
+   speed = 150;
+ }
 
-  int dir = 1;
-  if (u < 0) {
-    dir = -1; // Move backward
-  } else {
-    dir = 1; // Move forward
-  }
+ int dir = 1;
+ if (u < 0) {
+   dir = -1; // Move backward
+ } else {
+   dir = 1; // Move forward
+ }
 
-  setMotor_r(dir, speed);
-  prevError_r = 0;
+ setMotor_r(dir, speed);
+ prevError_r = 0;
 }
 
 void motorPID_l(int setPoint, float kp, float ki, float kd){
-  int currentTime = micros();
-  int deltaT = ((float)(currentTime - prevTime)) / 1.0e6; // time difference between ticks in seconds
-  prevTime = currentTime; // update prevTime each loop 
-  
-  int error = setPoint - leftEncoderPos;
-  int errorDerivative_l = (error - prevError_l) / deltaT;
-  errorIntegral_l = errorIntegral_l + error*deltaT;
+ int currentTime = micros();
+ int deltaT = ((float)(currentTime - prevTime)) / 1.0e6; // time difference between ticks in seconds
+ prevTime = currentTime; // update prevTime each loop 
+ 
+ int error = setPoint - leftEncoderPos;
+ int errorDerivative_l = (error - prevError_l) / deltaT;
+ errorIntegral_l = errorIntegral_l + error*deltaT;
 
-  float u = kp*error + ki*errorIntegral_l + kd*errorDerivative_l; 
+ float u = kp*error + ki*errorIntegral_l + kd*errorDerivative_l; 
 
-  float speed = fabs(u); // Set a top speed
-  if(speed > 150){
-    speed = 150;
-  }
+ float speed = fabs(u); // Set a top speed
+ if(speed > 150){
+   speed = 150;
+ }
 
-  int dir = 1;
-  if (u < 0) {
-    dir = -1; // Move backward
-  } else {
-    dir = 1; // Move forward
-  }
+ int dir = 1;
+ if (u < 0) {
+   dir = -1; // Move backward
+ } else {
+   dir = 1; // Move forward
+ }
 
-  setMotor_l(dir, speed);
-  prevError_l = 0;
+ setMotor_l(dir, speed);
+ prevError_l = 0;
 }
 
-//==============================================================================================
-// Reset our encoder ticks
 void resetCount(){
-  rightEncoderPos = 0;
-  leftEncoderPos = 0;
-  setMotor_r(0, 0);
-  setMotor_l(0, 0);
+ rightEncoderPos = 0;
+ leftEncoderPos = 0;
+ setMotor_r(0, 0);
+ setMotor_l(0, 0);
 }
-
 
 // Helper functions when moving
 void goForward(){
-  motorPID_r(forwardTarget, forwardPID[0]-0.0588, forwardPID[1], forwardPID[2]);
-  motorPID_l(forwardTarget, forwardPID[0]+0.005, forwardPID[1], forwardPID[2]);
-  while (leftEncoderPos < forwardTarget && rightEncoderPos < forwardTarget) {
-    delay(30); 
-  }
+ motorPID_r(forwardTarget, forwardPID[0]-0.0588, forwardPID[1], forwardPID[2]);
+ motorPID_l(forwardTarget, forwardPID[0]+0.005, forwardPID[1], forwardPID[2]);
+ while (leftEncoderPos < forwardTarget && rightEncoderPos < forwardTarget) {
+   delay(30); 
+ }
 }
 
 void turnRight(){
-  motorPID_r(-rotateTarget, rotatePID[0], rotatePID[1], rotatePID[2]);
-  motorPID_l(rotateTarget, rotatePID[0], rotatePID[1], rotatePID[2]);
-  while (leftEncoderPos < rotateTarget && rightEncoderPos < rotateTarget) {
-    delay(30); 
-  }
+ motorPID_r(-rotateTarget, rotatePID[0], rotatePID[1], rotatePID[2]);
+ motorPID_l(rotateTarget, rotatePID[0], rotatePID[1], rotatePID[2]);
+ while (leftEncoderPos < rotateTarget && rightEncoderPos < rotateTarget) {
+   delay(30); 
+ }
 }
 
 void turnLeft(){
-  motorPID_r(rotateTarget+5, rotatePID[0], rotatePID[1], rotatePID[2]);
-  motorPID_l(-rotateTarget+5, rotatePID[0], rotatePID[1], rotatePID[2]);
-  while (leftEncoderPos < rotateTarget && rightEncoderPos < rotateTarget) {
-    delay(30); 
-  }
+ motorPID_r(rotateTarget+5, rotatePID[0], rotatePID[1], rotatePID[2]);
+ motorPID_l(-rotateTarget+5, rotatePID[0], rotatePID[1], rotatePID[2]);
+ while (leftEncoderPos < rotateTarget && rightEncoderPos < rotateTarget) {
+   delay(30); 
+ }
 }
 
 void turnAround(){
-  motorPID_r(rotateTarget*2, rotatePID[0], rotatePID[1], rotatePID[2]);
-  motorPID_l(-rotateTarget*2, rotatePID[0], rotatePID[1], rotatePID[2]);
-  while (leftEncoderPos < rotateTarget && rightEncoderPos < rotateTarget) {
-    delay(30); 
-  }
+ motorPID_r(rotateTarget*2, rotatePID[0], rotatePID[1], rotatePID[2]);
+ motorPID_l(-rotateTarget*2, rotatePID[0], rotatePID[1], rotatePID[2]);
+ while (leftEncoderPos < rotateTarget && rightEncoderPos < rotateTarget) {
+   delay(30); 
+ }
 }
-//==============================================================================================
 
 void setup() {
-  Serial.begin(9600);
-  
-  //_________________MOTORS AND ENCODERS________
-  pinMode(ENCODER_R_A, INPUT_PULLUP);
-  pinMode(ENCODER_R_B, INPUT_PULLUP);
-  pinMode(ENCODER_L_A, INPUT_PULLUP);
-  pinMode(ENCODER_L_B, INPUT_PULLUP);
+ Serial.begin(9600);
+ 
+ pinMode(EMITTERS, OUTPUT);
+ pinMode(RED_LED, OUTPUT);
+ pinMode(INDICATOR_LED_R, OUTPUT);
+ pinMode(INDICATOR_LED_L, OUTPUT);
 
-  pinMode(SPEED_MOTOR_L, OUTPUT);
-  pinMode(SPEED_MOTOR_R, OUTPUT);
-  pinMode(DIR_MOTOR_L, OUTPUT);
-  pinMode(DIR_MOTOR_R, OUTPUT);
-  
-  //________________LEDS_____________________
-  pinMode(EMITTERS, OUTPUT);
-  pinMode(RED_LED, OUTPUT);
-  pinMode(INDICATOR_LED_R, OUTPUT);
-  pinMode(INDICATOR_LED_L, OUTPUT);
-  //_________________________________________
+ pinMode(ENCODER_R_A, INPUT_PULLUP);
+ pinMode(ENCODER_R_B, INPUT_PULLUP);
+ pinMode(ENCODER_L_A, INPUT_PULLUP);
+ pinMode(ENCODER_L_B, INPUT_PULLUP);
 
-  pinMode(DIP_SWITCH, INPUT_PULLUP);
+ pinMode(SPEED_MOTOR_L, OUTPUT);
+ pinMode(SPEED_MOTOR_R, OUTPUT);
+ pinMode(DIR_MOTOR_L, OUTPUT);
+ pinMode(DIR_MOTOR_R, OUTPUT);
 
-  //__________________________________________
+ pinMode(DIP_SWITCH, INPUT_PULLUP); 
 
-  attachInterrupt(digitalPinToInterrupt(ENCODER_L_B), readEncoderLeft, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_R_A), readEncoderRight, CHANGE);
+ attachInterrupt(digitalPinToInterrupt(ENCODER_L_B), readEncoderLeft, CHANGE);
+ attachInterrupt(digitalPinToInterrupt(ENCODER_R_A), readEncoderRight, CHANGE);
+ 
+ // Initialise maze
+ maze.floodfill();
+ maze.printMaze();
+
+ Serial.println("START: ");
+ Serial.print(posX);
+ Serial.print(",");
+ Serial.print(posY);
+ Serial.print(" CURRENT WEIGHT: ");
+ Serial.print(maze.getCurrentCell(posX,posY).getValue());
+ Serial.println("");
 }
 
 void loop() {
-  // digitalWrite(EMITTERS, HIGH);
-  // Serial.println(analogRead(RIGHT_SENSOR));  // 130 - 100
-  // Serial.println(analogRead(LEFT_SENSOR));     // 130 - 110
-  // Serial.println(analogRead(MIDDLE_SENSOR));     // 130 - 100
+   int dipSwitch = analogRead(DIP_SWITCH);
+   if(dipSwitch > 1000){
+       switchOn = true;
+   }
 
-  //digitalWrite(DIR_MOTOR_L, HIGH);
-  //analogWrite(SPEED_MOTOR_L, 180);
+   if(switchOn){
+       delay(5000);
+       while(maze.getCurrentCell(posX,posY).getValue() != 0) {
+           digitalWrite(EMITTERS, HIGH);
 
-  //digitalWrite(DIR_MOTOR_R, LOW);
-  //analogWrite(SPEED_MOTOR_R, 180);
-  
-  //setMotors(1, 180);
-  //adjustSpeedBasedOnWallDistance(); 
+           // If our sensors detect new walls, update our maze
+           if (analogRead(RIGHT_SENSOR) >  sensorThreshold){
+               // If facing (1=north, 2=east, 3=south, 4=west)
+               if (dir = 1) {
+                   maze.recordWall(posX, posY, 2); // Record wall to the east
+               } else if (dir = 2) { 
+                   maze.recordWall(posX, posY, 3); // Record wall to the south
+               } else if (dir = 3) {
+                   maze.recordWall(posX, posY, 4); // Record wall to the west
+               } else if (dir = 4) {
+                   maze.recordWall(posX, posY, 1); // Record wall to the north
+               }
+               delay(200);
+           }
 
-  // EXAMPLE OF WALL RECORDING
-  // if mouse is facing north and left sensor detects wall:
-  // maze.recordWall(posX, posY, 4);
+           if(analogRead(MIDDLE_SENSOR) >  sensorThreshold){
+               // If facing (1=north, 2=east, 3=south, 4=west)
+               if (dir = 1) {
+                   maze.recordWall(posX, posY, 1); // Record wall to the north
+               } else if (dir = 2) { 
+                   maze.recordWall(posX, posY, 2); // Record wall to the east
+               } else if (dir = 3) {
+                   maze.recordWall(posX, posY, 3); // Record wall to the south
+               } else if (dir = 4) {
+                   maze.recordWall(posX, posY, 4); // Record wall to the west
+               }
+               delay(200);
+           }
 
-  if (maze.getNorthCell.getValue() < maze.getCurrentCell(posX, posY)) {
-    goForward();
-    resetCount();
-    
-    // Update position
-    posY += 1;
+           if(analogRead(LEFT_SENSOR) >  sensorThreshold){
+               // If facing (1=north, 2=east, 3=south, 4=west)
+               if (dir = 1) {
+                   maze.recordWall(posX, posY, 4); // Record wall to the west
+               } else if (dir = 2) { 
+                   maze.recordWall(posX, posY, 1); // Record wall to the north
+               } else if (dir = 3) {
+                   maze.recordWall(posX, posY, 2); // Record wall to the east
+               } else if (dir = 4) {
+                   maze.recordWall(posX, posY, 3); // Record wall to the south
+               }
+               delay(200);
+           }
 
-    delay(200);
-  } else if (maze.getEasthCell.getValue() < maze.getCurrentCell(posX, posY)) {
-    turnRight();
-    delay(200);
-    goForward();
-    
-    // Update position
-    posX += 1;
-    
-    // Update direction
-    dir = 2;
-    resetCount();
-    delay(200);
-  } else if (maze.getSouthhCell.getValue() < maze.getCurrentCell(posX, posY)) {
-    turnAround();
-    // Update direction
-    dir = 3;
-    delay(200);
-    
-    goForward();
-    // Update position
-    posY -= 1;
-    delay(200);
+           // Check each cardinal direction's cell to see if its the lowest to move to
+           if (maze.getNorthCell(posX,posY).getValue() < maze.getCurrentCell(posX, posY).getValue() && !maze.getNorthCell(posX,posY).hasSouthWall()) {
+               // If facing (1=north, 2=east, 3=south, 4=west)
+               if (dir = 1) {
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 2) {
+                   turnLeft();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 3) {
+                   turnAround();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 4) {
+                   turnRight();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               }
+               // Update position and direction
+               posY += 1;
+               dir = 1;
+               delay(500);
+           }
 
-  } else if (maze.getWestCell.getValue() < maze.getCurrentCell(posX, posY)) {
-    turnLeft();
-    // Update direction
-    dir = 4;
-    delay(200);
-    goForward();
+           if (maze.getEastCell(posX,posY).getValue() < maze.getCurrentCell(posX, posY).getValue() && !maze.getEastCell(posX,posY).hasWestWall()) {
+               // If facing (1=north, 2=east, 3=south, 4=west)
+               if (dir = 1) {
+                   turnRight();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 2) {
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 3) {
+                   turnLeft();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 4) {
+                   turnAround();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               }
+               // Update position and direction
+               posX += 1;
+               dir = 2;
+               delay(500);
+           }
 
-    // Update position
-    posX -= 1;
-    delay(200);
-  } else {
-    // Stop
-    setMotor_l(0,0); 
-    setMotor_r(0,0);
-  }
+           if (maze.getSouthCell(posX,posY).getValue() < maze.getCurrentCell(posX, posY).getValue() && !maze.getSouthCell(posX,posY).hasNorthWall()) {
+               // If facing (1=north, 2=east, 3=south, 4=west)
+               if (dir = 1) {
+                   turnAround();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 2) {
+                   turnRight();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 3) {
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 4) {
+                   turnLeft();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               }
+               // Update position and direction
+               posY -= 1;
+               dir = 3;
+               delay(500);
+           }
 
+           if (maze.getWestCell(posX,posY).getValue() < maze.getCurrentCell(posX, posY).getValue() && !maze.getWestCell(posX,posY).hasEastWall()) {
+               // If facing (1=north, 2=east, 3=south, 4=west)
+               if (dir = 1) {
+                   turnLeft();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 2) {
+                   turnAround();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 3) {
+                   turnRight();
+                   resetCount();
+                   delay(200);
+                   goForward();
+                   resetCount();
+                   delay(200);
+               } else if (dir = 4) {
+                   goForward();
+                   resetCount();
+                   delay(200);
+               }
+               // Update position and direction
+               posX -= 1;
+               dir = 4;
+               delay(500);
+           }
+
+           delay(50);
+           maze.floodfill();
+           maze.printMaze();
+           delay(50);
+       }
+
+       Serial.println("DONE!");
+       digitalWrite(EMITTERS, LOW);
+   }
+   
+   switchOn = false;
+   setMotor_l(0,0); // Stop the mouse
+   setMotor_r(0,0);
 }
